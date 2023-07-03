@@ -6,12 +6,15 @@ const uint8_t RIGHT_SERVO_PIN = 6;
 const uint8_t RC_CH1 = A0;
 const uint8_t RC_CH2 = A1;
 const uint8_t RC_CH3 = A2;
+const uint8_t RC_CH6 = A2; // the knob, to be used for either turn specific sensitivity or absolute maximum lockout
 const uint16_t CH1_MAX = 1800;
 const uint16_t CH1_MIN = 1100;
 const uint16_t CH2_MAX = 1800;
 const uint16_t CH2_MIN = 1100;
 const uint16_t CH3_MAX = 1800;
 const uint16_t CH3_MIN = 1100;
+const uint16_t CH6_MIN = 1100;
+const uint16_t CH6_MAX = 1800;
 const uint8_t reverseRight = 1;
 const uint8_t reverseLeft = 0;
 
@@ -20,6 +23,7 @@ const uint8_t reverseLeft = 0;
 uint16_t CH1_last_value = 0;
 uint16_t CH2_last_value = 0;
 uint16_t CH3_last_value = 0;
+uint16_t CH6_last_value = 0;
 uint32_t timeout = 100;
 uint32_t lastTime = 0;
 int16_t velocity = 0;
@@ -44,6 +48,7 @@ void setup() {
   pinMode(RC_CH1, INPUT);
   pinMode(RC_CH2, INPUT);
   pinMode(RC_CH3, INPUT);
+  pinMode(RC_CH6, INPUT);
 }
 
 
@@ -51,15 +56,18 @@ void loop() {
   int32_t ch1Average = 0;
   int32_t ch2Average = 0;
   int32_t ch3Average = 0;
+  int32_t ch6Average = 0;
   for (uint8_t i = 0; i < 3; i++) {
     getReceiver();
     ch1Average += CH1_last_value;
     ch2Average += CH2_last_value;
     ch3Average += CH3_last_value;
+    ch6Average += CH6_last_value;
   }
   CH1_last_value = ch1Average / 3.0;
   CH2_last_value = ch2Average / 3.0;
   CH3_last_value = ch3Average / 3.0;
+  CH6_last_value = ch6Average / 3.0;
   scaleNumbers();
   controlMotor();
   serialUpdate();
@@ -70,6 +78,7 @@ void getReceiver() {
   CH1_last_value = 0;
   CH2_last_value = 0;
   CH3_last_value = 0;
+  CH6_last_value = 0;
 
   lastTime = millis();
   while (CH1_last_value == 0 && millis() - lastTime < timeout) {
@@ -82,6 +91,10 @@ void getReceiver() {
   lastTime = millis();
   while (CH3_last_value == 0 && millis() - lastTime < timeout) {
     CH3_last_value = pulseIn(RC_CH3, HIGH, 20000);
+  }
+  lastTime = millis();
+  while (CH6_last_value == 0 && millis() - lastTime < timeout) {
+    CH6_last_value = pulseIn(RC_CH6, HIGH, 20000);
   }
 }
 
@@ -106,6 +119,7 @@ void scaleNumbers() {
   if (CH1_last_value == 0) difference = 0;  //CH1 returns 0 if radio is off
   if (CH2_last_value == 0) velocity = 0;  //CH2 returns 0 if radio is off
   if (CH3_last_value == 0) velocity = 0;  //CH3 returns 0 if radio is off
+  if (CH6_last_value == 0) velocity = 0;  //CH6 returns 0 if radio is off
 
 }
 
@@ -135,6 +149,7 @@ void serialUpdate() {
   Serial.print("CH1: "); Serial.print(CH1_last_value);
   Serial.print("  CH2: "); Serial.print(CH2_last_value);
   Serial.print("  CH3: "); Serial.print(CH3_last_value);
+  Serial.print("  CH6: "); Serial.print(CH6_last_value);
   Serial.print("  Velocity: "); Serial.print(velocity);
   Serial.print("  Diff: "); Serial.print(difference);
   Serial.print("  Max Speed: "); Serial.print(maxSpeed);
