@@ -1,5 +1,7 @@
 #include <Servo.h>
 #include <EEPROM.h> // for saving values
+#include <ArduinoSTL.h>
+#include <map>
 
 
 const uint8_t  LEFT_SERVO_PIN  = 5;
@@ -225,17 +227,21 @@ void printHelp() {
     }
 }
 
+//void elevatedPrint(String paramString)
+
 void printParameters() {
     Serial.println("***Current Parameters***");
+    Serial.println("---Motor Settings---");
     Serial.print("outputEnable");Serial.println(outputEnable);
+    Serial.print("reverseRight");Serial.println(reverseRight);
+    Serial.print("reverseLeft");Serial.println(reverseLeft);
+    Serial.println("---Control Parameters---");
     Serial.print("maxDifference");Serial.println(maxDifference);
     Serial.print("maxPWM");Serial.println(maxPWM);
     Serial.print("minPWM");Serial.println(minPWM);
     Serial.print("veloDeadZone");Serial.println(veloDeadZone);
     Serial.print("diffDeadZone");Serial.println(diffDeadZone);
     Serial.print("deadZoneEnable");Serial.println(deadZoneEnable);
-    Serial.print("reverseRight");Serial.println(reverseRight);
-    Serial.print("reverseLeft");Serial.println(reverseLeft);
     Serial.print("elevatedPermissions");Serial.println(elevatedPermissions);
     Serial.print("ch1max");Serial.println(CH1_MAX);
     Serial.print("ch1min");Serial.println(CH1_MIN);
