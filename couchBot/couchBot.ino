@@ -1,7 +1,5 @@
 #include <Servo.h>
 #include <EEPROM.h> // for saving values
-#include <ArduinoSTL.h>
-#include <map>
 
 
 const uint8_t  LEFT_SERVO_PIN  = 5;
@@ -179,6 +177,12 @@ void handleCommand() {
         printHelp();
     } else if (commandStr.equalsIgnoreCase("lpv")) {
         printParameters();
+    } else if (commandStr.equalsIgnoreCase("dbg")) {
+        serialDebugPrintEnable = true;
+    } else if (commandStr.equalsIgnoreCase("lcp") && elevatedPermissions) {
+        listParameters();
+    } else if (commandStr.substring(0,2).equalsIgnoreCase("cp") && elevatedPermissions) {
+        changeParameters();
     } else {
 
     }
@@ -227,8 +231,6 @@ void printHelp() {
     }
 }
 
-//void elevatedPrint(String paramString)
-
 void printParameters() {
     Serial.println("***Current Parameters***");
     Serial.println("---Motor Settings---");
@@ -242,7 +244,6 @@ void printParameters() {
     Serial.print("veloDeadZone");Serial.println(veloDeadZone);
     Serial.print("diffDeadZone");Serial.println(diffDeadZone);
     Serial.print("deadZoneEnable");Serial.println(deadZoneEnable);
-    Serial.print("elevatedPermissions");Serial.println(elevatedPermissions);
     Serial.print("ch1max");Serial.println(CH1_MAX);
     Serial.print("ch1min");Serial.println(CH1_MIN);
     Serial.print("ch2max");Serial.println(CH2_MAX);
@@ -251,4 +252,39 @@ void printParameters() {
     Serial.print("ch3min");Serial.println(CH3_MIN);
     Serial.print("ch8max");Serial.println(CH8_MAX);
     Serial.print("ch8min");Serial.println(CH8_MIN);
+}
+
+void listParameters(void) {
+    Serial.println("---Motor Settings---");
+    Serial.println("outputEnable");
+    Serial.println("reverseRight");
+    Serial.println("reverseLeft");
+    Serial.println("---Control Parameters---");
+    Serial.println("maxDifference");
+    Serial.println("maxPWM");
+    Serial.println("minPWM");
+    Serial.println("veloDeadZone");
+    Serial.println("diffDeadZone");
+    Serial.println("deadZoneEnable");
+    Serial.println("ch1max");
+    Serial.println("ch1min");
+    Serial.println("ch2max");
+    Serial.println("ch2min");
+    Serial.println("ch3max");
+    Serial.println("ch3min");
+    Serial.println("ch8max");
+    Serial.println("ch8min");
+}
+
+void changeParameters() {
+    // first check the function for form
+    String paramVal = commandStr.substring(4).toLowerCase();
+    // check for first index of space
+    int spaceIndex = paramVal.indexOf(" ");
+    if (spaceIndex <=0) {
+        Serial.println("Invalid Command");
+        return;
+    }
+    String param = paramVal.substring(0,spaceIndex+1).toLowerCase();
+    // check the parameter agaiinst the list of parameters
 }
