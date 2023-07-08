@@ -1,6 +1,6 @@
 #include <Servo.h>
 #include <EEPROM.h> // for saving values
-
+#include "couchBotDefs.h"
 
 const uint8_t  LEFT_SERVO_PIN  = 5;
 const uint8_t  RIGHT_SERVO_PIN = 6;

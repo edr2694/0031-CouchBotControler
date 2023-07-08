@@ -1,0 +1,6 @@
+#ifndef _COUCHBOTDEFS_H
+#define _COUCHBOTDEFS_H
+
+
+
+#endif // _COUCHBOTDEFS_H
