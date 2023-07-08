@@ -259,13 +259,14 @@ void listParameters(void) {
     Serial.println("outputEnable");
     Serial.println("reverseRight");
     Serial.println("reverseLeft");
-    Serial.println("---Control Parameters---");
+    Serial.println("---Control Loop Parameters---");
     Serial.println("maxDifference");
     Serial.println("maxPWM");
     Serial.println("minPWM");
     Serial.println("veloDeadZone");
     Serial.println("diffDeadZone");
     Serial.println("deadZoneEnable");
+    Serial.println("---Controller Parameters---");
     Serial.println("ch1max");
     Serial.println("ch1min");
     Serial.println("ch2max");
