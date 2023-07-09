@@ -54,21 +54,38 @@ Servo rightMotor;
 
 
 void setup() {
-  Serial.begin(115200);
-  leftMotor.attach(LEFT_SERVO_PIN); leftMotor.write(90);
-  rightMotor.attach(RIGHT_SERVO_PIN); rightMotor.write(90);
-  pinMode(RC_CH1, INPUT);
-  pinMode(RC_CH2, INPUT);
-  pinMode(RC_CH3, INPUT);
-  pinMode(RC_CH8, INPUT);
-  if (reverseLeft) {
-    maxLeftPWM = 0;
-    minLeftPWM = 180;
-  }
-  if (reverseRight) {
-    maxRightPWM = 0;
-    minRightPWM = 180;
-  }
+    paramMap[outEnStr]    = 1;
+    paramMap[revRightStr] = 10;
+    paramMap[revLeftStr]  = 11;
+    paramMap[maxDiffStr]  = 20;
+    paramMap[maxPWMStr]   = 21;
+    paramMap[minPWMStr]   = 22;
+    paramMap[veloDZStr]   = 30;
+    paramMap[diffDZStr]   = 31;
+    paramMap[dzEnaStr]    = 32;
+    paramMap[ch1maxStr]   = 40;
+    paramMap[ch1minStr]   = 41;
+    paramMap[ch2maxStr]   = 42;
+    paramMap[ch2minStr]   = 43;
+    paramMap[ch3maxStr]   = 44;
+    paramMap[ch3minStr]   = 45;
+    paramMap[ch8maxStr]   = 46;
+    paramMap[ch8minStr]   = 47;
+    Serial.begin(115200);
+    leftMotor.attach(LEFT_SERVO_PIN); leftMotor.write(90);
+    rightMotor.attach(RIGHT_SERVO_PIN); rightMotor.write(90);
+    pinMode(RC_CH1, INPUT);
+    pinMode(RC_CH2, INPUT);
+    pinMode(RC_CH3, INPUT);
+    pinMode(RC_CH8, INPUT);
+    if (reverseLeft) {
+        maxLeftPWM = 0;
+        minLeftPWM = 180;
+    }
+    if (reverseRight) {
+        maxRightPWM = 0;
+        minRightPWM = 180;
+    }
 }
 
 
@@ -169,19 +186,19 @@ void controlMotor() {
 void handleCommand() {
     if (commandStr.length() < 1) {
         invalidCommand();
-    } else if (commandStr.equalsIgnoreCase("enable")) {
+    } else if (commandStr.equalsIgnoreCase(enableCmdStr)) {
         outputEnable = true;
-    } else if (commandStr.equalsIgnoreCase("disable")) {
+    } else if (commandStr.equalsIgnoreCase(disableCmdStr)) {
         outputEnable = false;
-    } else if (commandStr.equalsIgnoreCase("help")) {
+    } else if (commandStr.equalsIgnoreCase(helpCmdStr)) {
         printHelp();
-    } else if (commandStr.equalsIgnoreCase("lpv")) {
+    } else if (commandStr.equalsIgnoreCase(lstParamCmdStr)) {
         printParameters();
-    } else if (commandStr.equalsIgnoreCase("dbg")) {
+    } else if (commandStr.equalsIgnoreCase(debugCmdStr)) {
         serialDebugPrintEnable = true;
-    } else if (commandStr.equalsIgnoreCase("lcp") && elevatedPermissions) {
+    } else if (commandStr.equalsIgnoreCase(lstChngParamCmdStr) && elevatedPermissions) {
         listParameters();
-    } else if (commandStr.substring(0,2).equalsIgnoreCase("cp") && elevatedPermissions) {
+    } else if (commandStr.substring(0,2).equalsIgnoreCase(chngParamCmdStr) && elevatedPermissions) {
         changeParameters();
     } else {
 
@@ -189,7 +206,7 @@ void handleCommand() {
 }
 
 void invalidCommand() {
-    Serial.println("Invalid Command!");
+    Serial.println(invalidCmdString);
 }
 
 void serialDebugPrint() {
@@ -217,75 +234,87 @@ void serialEvent() {
 void printHelp() {
     Serial.println("******Caddy Couch Control V0.2******");
     Serial.println("Available Commands:");
-    Serial.println("help - print this message");
-    Serial.println("lpv - list all parameter values");
-    Serial.println("dbg - print debug values (q to quit)");
-    Serial.println("enable - enable motor output");
-    Serial.println("disable - disable motor output");
+    Serial.print(helpCmdStr);Serial.println(": print this message");
+    Serial.print(lstParamCmdStr);Serial.println(": list all parameter values");
+    Serial.print(debugCmdStr);Serial.println(": print debug values (q to quit)");
+    Serial.print(enableCmdStr);Serial.println(": enable motor output");
+    Serial.print(disableCmdStr);Serial.println(": disable motor output");
     if (elevatedPermissions) {
         Serial.println("You have elevated permissions! You have extra access:");
-        Serial.println("lcp - list changeable parameters");
-        Serial.println("cp <parameter> <value> - change a parameter value. Motors must be disabled");
-        Serial.println("save - save parameters to eeprom. Will overwrite any values stored there, and cannot be undone");
-        Serial.println("reload - reload parameters from eeprom");
+        Serial.print(lstChngParamCmdStr);Serial.println(": list changeable parameters");
+        Serial.print(chngParamCmdStr);Serial.println(" <parameter> <value>: change a parameter value. Motors must be disabled");
+        Serial.print(saveCmdStr);Serial.println(": save parameters to eeprom. Will overwrite any values stored there, and cannot be undone");
+        Serial.print(reloadCmdStr);Serial.println(": reload parameters from eeprom");
     }
 }
 
 void printParameters() {
     Serial.println("***Current Parameters***");
     Serial.println("---Motor Settings---");
-    Serial.print("outputEnable");Serial.println(outputEnable);
-    Serial.print("reverseRight");Serial.println(reverseRight);
-    Serial.print("reverseLeft");Serial.println(reverseLeft);
+    Serial.print(outEnStr);Serial.println(outputEnable);
+    Serial.print(revRightStr);Serial.println(reverseRight);
+    Serial.print(revLeftStr);Serial.println(reverseLeft);
     Serial.println("---Control Parameters---");
-    Serial.print("maxDifference");Serial.println(maxDifference);
-    Serial.print("maxPWM");Serial.println(maxPWM);
-    Serial.print("minPWM");Serial.println(minPWM);
-    Serial.print("veloDeadZone");Serial.println(veloDeadZone);
-    Serial.print("diffDeadZone");Serial.println(diffDeadZone);
-    Serial.print("deadZoneEnable");Serial.println(deadZoneEnable);
-    Serial.print("ch1max");Serial.println(CH1_MAX);
-    Serial.print("ch1min");Serial.println(CH1_MIN);
-    Serial.print("ch2max");Serial.println(CH2_MAX);
-    Serial.print("ch2min");Serial.println(CH2_MIN);
-    Serial.print("ch3max");Serial.println(CH3_MAX);
-    Serial.print("ch3min");Serial.println(CH3_MIN);
-    Serial.print("ch8max");Serial.println(CH8_MAX);
-    Serial.print("ch8min");Serial.println(CH8_MIN);
+    Serial.print(maxDiffStr);Serial.println(maxDifference);
+    Serial.print(maxPWMStr);Serial.println(maxPWM);
+    Serial.print(minPWMStr);Serial.println(minPWM);
+    Serial.print(veloDZStr);Serial.println(veloDeadZone);
+    Serial.print(diffDZStr);Serial.println(diffDeadZone);
+    Serial.print(dzEnaStr);Serial.println(deadZoneEnable);
+    Serial.print(ch1maxStr);Serial.println(CH1_MAX);
+    Serial.print(ch1minStr);Serial.println(CH1_MIN);
+    Serial.print(ch2maxStr);Serial.println(CH2_MAX);
+    Serial.print(ch2minStr);Serial.println(CH2_MIN);
+    Serial.print(ch3maxStr);Serial.println(CH3_MAX);
+    Serial.print(ch3minStr);Serial.println(CH3_MIN);
+    Serial.print(ch8maxStr);Serial.println(CH8_MAX);
+    Serial.print(ch8minStr);Serial.println(CH8_MIN);
 }
 
 void listParameters(void) {
     Serial.println("---Motor Settings---");
-    Serial.println("outputEnable");
-    Serial.println("reverseRight");
-    Serial.println("reverseLeft");
+    Serial.println(outEnStr);
+    Serial.println(revRightStr);
+    Serial.println(revLeftStr);
     Serial.println("---Control Loop Parameters---");
-    Serial.println("maxDifference");
-    Serial.println("maxPWM");
-    Serial.println("minPWM");
-    Serial.println("veloDeadZone");
-    Serial.println("diffDeadZone");
-    Serial.println("deadZoneEnable");
+    Serial.println(maxDiffStr);
+    Serial.println(maxPWMStr);
+    Serial.println(minPWMStr);
+    Serial.println(veloDZStr);
+    Serial.println(diffDZStr);
+    Serial.println(dzEnaStr);
     Serial.println("---Controller Parameters---");
-    Serial.println("ch1max");
-    Serial.println("ch1min");
-    Serial.println("ch2max");
-    Serial.println("ch2min");
-    Serial.println("ch3max");
-    Serial.println("ch3min");
-    Serial.println("ch8max");
-    Serial.println("ch8min");
+    Serial.println(ch1maxStr);
+    Serial.println(ch1minStr);
+    Serial.println(ch2maxStr);
+    Serial.println(ch2minStr);
+    Serial.println(ch3maxStr);
+    Serial.println(ch3minStr);
+    Serial.println(ch8maxStr);
+    Serial.println(ch8minStr);
 }
 
 void changeParameters() {
     // first check the function for form
-    String paramVal = commandStr.substring(4).toLowerCase();
+    String paramVal = commandStr.substring(3);
+    String param;
+    String value;
     // check for first index of space
     int spaceIndex = paramVal.indexOf(" ");
-    if (spaceIndex <=0) {
-        Serial.println("Invalid Command");
+    if (spaceIndex <= 0) {
+        // didn't find a space, or there was more than one space between cp and param
+        Serial.println(invalidCmdString);
+        return;
+    } else {
+        param = paramVal.substring(0,spaceIndex);
+        value = paramVal.substring(spaceIndex+1);
+    }
+    // check value for spaces
+    if (value.indexOf(" ") >= 0) {
+        Serial.println(invalidCmdString);
         return;
     }
-    String param = paramVal.substring(0,spaceIndex+1).toLowerCase();
-    // check the parameter agaiinst the list of parameters
+
+    // look through the parameters and see if we get a match
+    
 }

@@ -1,5 +1,7 @@
 #ifndef _COUCHBOTDEFS_H
 #define _COUCHBOTDEFS_H
+#include <ArduinoSTL.h>
+#include <map>
 
 // Parameters
 const String outEnStr    = "outputEnable";
@@ -20,16 +22,24 @@ const String ch3minStr   = "ch3min";
 const String ch8maxStr   = "ch8max";
 const String ch8minStr   = "ch8min";
 
+
+std::map<String, int> paramMap;
+
+
 // Commands
 
-const String helpCmdStr = "help";
-const String lstParamCmdStr = "lpv";
-const String debugCmdStr = "dbg";
-const String enableCmdStr = "enable";
-const String disableCmdStr = "disable";
+const String helpCmdStr         = "help";
+const String lstParamCmdStr     = "lpv";
+const String debugCmdStr        = "dbg";
+const String enableCmdStr       = "enable";
+const String disableCmdStr      = "disable";
 const String lstChngParamCmdStr = "lcp";
-const String chngParamCmdStr = "cp";
-const String saveCmdStr = "save";
-const String reloadCmdStr = "reload";
+const String chngParamCmdStr    = "cp";
+const String saveCmdStr         = "save";
+const String reloadCmdStr       = "reload";
+
+// Miscellaneous
+
+const String invalidCmdString = "Invalid Command";
 
 #endif // _COUCHBOTDEFS_H
