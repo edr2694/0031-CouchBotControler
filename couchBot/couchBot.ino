@@ -18,8 +18,6 @@ const uint16_t CH8_MIN         = 989; // secondary limiter
 const uint16_t CH8_MAX         = 1984;
 const uint16_t veloDeadZone    = 6;
 const uint16_t diffDeadZone    = 6;
-const uint8_t  reverseRight    = 1;
-const uint8_t  reverseLeft     = 0;
 
 
 //working variables
@@ -47,6 +45,8 @@ boolean serialDebugPrintEnable = false;
 boolean newCommand = false;
 boolean elevatedPermissions = false;
 String commandStr = "";
+boolean  reverseRight    = true;
+boolean  reverseLeft     = false;
 
 
 Servo leftMotor;
@@ -54,23 +54,6 @@ Servo rightMotor;
 
 
 void setup() {
-    paramMap[outEnStr]    = 1;
-    paramMap[revRightStr] = 10;
-    paramMap[revLeftStr]  = 11;
-    paramMap[maxDiffStr]  = 20;
-    paramMap[maxPWMStr]   = 21;
-    paramMap[minPWMStr]   = 22;
-    paramMap[veloDZStr]   = 30;
-    paramMap[diffDZStr]   = 31;
-    paramMap[dzEnaStr]    = 32;
-    paramMap[ch1maxStr]   = 40;
-    paramMap[ch1minStr]   = 41;
-    paramMap[ch2maxStr]   = 42;
-    paramMap[ch2minStr]   = 43;
-    paramMap[ch3maxStr]   = 44;
-    paramMap[ch3minStr]   = 45;
-    paramMap[ch8maxStr]   = 46;
-    paramMap[ch8minStr]   = 47;
     Serial.begin(115200);
     leftMotor.attach(LEFT_SERVO_PIN); leftMotor.write(90);
     rightMotor.attach(RIGHT_SERVO_PIN); rightMotor.write(90);
@@ -314,7 +297,50 @@ void changeParameters() {
         Serial.println(invalidCmdString);
         return;
     }
-
     // look through the parameters and see if we get a match
-    
+    findAndAdjustParam(&param, &value);
+}
+
+void findAndAdjustParam(String *param, String *value)
+{
+    // ok, before we start this function. Let's clear the air.
+    // Yes, this sucks. I know it sucks. But the ArduinoSTL library
+    // which could have been used to group these guys by type
+    // using std::map has major issues, and any other option is
+    // going to be just as bad if not worse, so here we are.
+
+    // Don't worry too much about efficiency. This particular function
+    // can only run if the motors have been disabled, in other words,
+    // we're not interrupting important control loop buisness.
+
+    if (param->equalsIgnoreCase(revRightStr)) {
+        checkAndUpdateBoolean(value, &reverseRight);
+    } else if (param->equalsIgnoreCase(revLeftStr)) {
+        checkAndUpdateBoolean(value, &reverseLeft);
+    } else if (param->equalsIgnoreCase(dzEnaStr)) {
+        checkAndUpdateBoolean(value, &deadZoneEnable);
+    }
+}
+
+void checkAndUpdateBoolean(String *value, boolean *bVal) {
+    if (!value->equalsIgnoreCase(boolTrue) && !value->equalsIgnoreCase(boolFalse)) {
+            Serial.println(invalidPrmString);
+    } else {
+        if (value->equalsIgnoreCase(boolTrue)) {
+            *bVal = true;
+        } else {
+            *bVal = false;
+        }
+    }
+}
+
+
+boolean uintInCheck(String *value) {
+
+}
+
+
+
+void intInCheck(String *value) {
+
 }
