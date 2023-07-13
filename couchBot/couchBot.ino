@@ -8,16 +8,6 @@ const uint8_t  RC_CH1          = A0;
 const uint8_t  RC_CH2          = A1;
 const uint8_t  RC_CH3          = A2;
 const uint8_t  RC_CH8          = A3; // the knob, to be used for either turn specific sensitivity or absolute maximum lockout
-const uint16_t CH1_MAX         = 1924; // right stick right/left TURN
-const uint16_t CH1_MIN         = 963;
-const uint16_t CH2_MAX         = 1989; // right stick up/down MAIN THROTTLE
-const uint16_t CH2_MIN         = 984;
-const uint16_t CH3_MAX         = 1800; // left stick up/down LIMITTER
-const uint16_t CH3_MIN         = 1100;
-const uint16_t CH8_MIN         = 989; // secondary limiter
-const uint16_t CH8_MAX         = 1984;
-const uint16_t veloDeadZone    = 6;
-const uint16_t diffDeadZone    = 6;
 
 
 //working variables
@@ -29,24 +19,40 @@ uint32_t timeout = 100;
 uint32_t lastTime = 0;
 int16_t velocity = 0;
 int16_t difference = 0;
-uint16_t maxDifference = 20;
 int16_t maxSpeed = 0;
 int16_t leftMotorSpeed = 0;
 int16_t rightMotorSpeed = 0;
-uint8_t maxPWM = 180;
-uint8_t minPWM = 0;
 uint8_t maxLeftPWM = 180;
 uint8_t minLeftPWM = 0;
 uint8_t maxRightPWM = 180;
 uint8_t minRightPWM = 0;
-boolean deadZoneEnable = true;
-boolean outputEnable = false;
 boolean serialDebugPrintEnable = false;
 boolean newCommand = false;
 boolean elevatedPermissions = false;
 String commandStr = "";
+
+
+
+// changeable values
+boolean outputEnable     = false;
 boolean  reverseRight    = true;
 boolean  reverseLeft     = false;
+boolean  deadZoneEnable  = true;
+uint16_t veloDeadZone    = 6;
+uint16_t diffDeadZone    = 6;
+uint16_t maxDifference   = 20;
+uint8_t  maxPWM          = 180;
+uint8_t  minPWM          = 0;
+uint16_t CH1_MAX         = 1924; // right stick right/left TURN
+uint16_t CH1_MIN         = 963;
+uint16_t CH2_MAX         = 1989; // right stick up/down MAIN THROTTLE
+uint16_t CH2_MIN         = 984;
+uint16_t CH3_MAX         = 1800; // left stick up/down LIMITTER
+uint16_t CH3_MIN         = 1100;
+uint16_t CH8_MIN         = 989; // secondary limiter
+uint16_t CH8_MAX         = 1984;
+
+
 
 
 Servo leftMotor;
@@ -319,6 +325,34 @@ void findAndAdjustParam(String *param, String *value)
         checkAndUpdateBoolean(value, &reverseLeft);
     } else if (param->equalsIgnoreCase(dzEnaStr)) {
         checkAndUpdateBoolean(value, &deadZoneEnable);
+    } else if (param->equalsIgnoreCase(veloDZStr)) {
+        checkAndUpdateUint16(value, &veloDeadZone);
+    } else if (param->equalsIgnoreCase(diffDZStr)) {
+        checkAndUpdateUint16(value, &diffDeadZone);
+    } else if (param->equalsIgnoreCase(maxDiffStr)) {
+        checkAndUpdateUint16(value, &maxDifference);
+    } else if (param->equalsIgnoreCase(maxPWMStr)) {
+        checkAndUpdateUint8(value, &maxPWM);
+    } else if (param->equalsIgnoreCase(minPWMStr)) {
+        checkAndUpdateUint8(value, &minPWM);
+    } else if (param->equalsIgnoreCase(ch1maxStr)) {
+        checkAndUpdateUint16(value, &CH1_MAX);
+    } else if (param->equalsIgnoreCase(ch1minStr)) {
+        checkAndUpdateUint16(value, &CH1_MIN);
+    } else if (param->equalsIgnoreCase(ch2maxStr)) {
+        checkAndUpdateUint16(value, &CH2_MAX);
+    } else if (param->equalsIgnoreCase(ch2minStr)) {
+        checkAndUpdateUint16(value, &CH2_MIN);
+    } else if (param->equalsIgnoreCase(ch3maxStr)) {
+        checkAndUpdateUint16(value, &CH3_MAX);
+    } else if (param->equalsIgnoreCase(ch3minStr)) {
+        checkAndUpdateUint16(value, &CH3_MIN);
+    } else if (param->equalsIgnoreCase(ch8maxStr)) {
+        checkAndUpdateUint16(value, &CH8_MAX);
+    } else if (param->equalsIgnoreCase(ch8minStr)) {
+        checkAndUpdateUint16(value, &CH8_MIN);
+    } else {
+        Serial.println(invalidPrmString);
     }
 }
 
@@ -334,11 +368,39 @@ void checkAndUpdateBoolean(String *value, boolean *bVal) {
     }
 }
 
-
-boolean uintInCheck(String *value) {
-
+void checkAndUpdateInt16(String *value, int16_t *iVal) {
+    int interVal = value->toInt();
+    if (!value->equalsIgnoreCase("0") && interVal == 0) {
+        // this is an error condition
+        Serial.println(invalidPrmString);
+    } else {
+        *iVal = interVal;
+    }
 }
 
+void checkAndUpdateUint16(String *value, uint16_t *uVal) {
+    int interVal = value->toInt();
+    if (!value->equalsIgnoreCase("0") && interVal == 0) {
+        // this is an error condition
+        Serial.println(invalidPrmString);
+    } else if (interVal < 0) {
+        Serial.println(invalidPrmString);
+    } else {
+        *uVal = (uint16_t)interVal;
+    }
+}
+
+void checkAndUpdateUint8(String *value, uint8_t *uVal) {
+    int interVal = value->toInt();
+    if (!value->equalsIgnoreCase("0") && interVal == 0) {
+        // this is an error condition
+        Serial.println(invalidPrmString);
+    } else if (interVal < 0) {
+        Serial.println(invalidPrmString);
+    } else {
+        *uVal = (uint8_t)interVal;
+    }
+}
 
 
 void intInCheck(String *value) {

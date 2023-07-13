@@ -3,14 +3,14 @@
 
 // Parameters
 const String outEnStr    = "outputEnable";
-const String revRightStr = "reverseRight";
-const String revLeftStr  = "reverseLeft";
+const String revRightStr = "reverseRight"; //
+const String revLeftStr  = "reverseLeft"; //
+const String dzEnaStr    = "deadZoneEnable"; //
+const String veloDZStr   = "veloDeadZone";
+const String diffDZStr   = "diffDeadZone";
 const String maxDiffStr  = "maxDifference";
 const String maxPWMStr   = "maxPWM";
 const String minPWMStr   = "minPWM";
-const String veloDZStr   = "veloDeadZone";
-const String diffDZStr   = "diffDeadZone";
-const String dzEnaStr    = "deadZoneEnable";
 const String ch1maxStr   = "ch1max";
 const String ch1minStr   = "ch1min";
 const String ch2maxStr   = "ch2max";
