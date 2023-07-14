@@ -34,7 +34,7 @@ String commandStr = "";
 
 
 // changeable values
-boolean outputEnable     = false;
+boolean  outputEnable    = false;
 boolean  reverseRight    = true;
 boolean  reverseLeft     = false;
 boolean  deadZoneEnable  = true;
@@ -185,12 +185,16 @@ void handleCommand() {
         printParameters();
     } else if (commandStr.equalsIgnoreCase(debugCmdStr)) {
         serialDebugPrintEnable = true;
+    } else if (commandStr.equalsIgnoreCase(saveCmdStr) && elevatedPermissions && !outputEnable) {
+        saveParameters();
+    } else if (commandStr.equalsIgnoreCase(reloadCmdStr) && elevatedPermissions && !outputEnable) {
+        reloadParameters();
     } else if (commandStr.equalsIgnoreCase(lstChngParamCmdStr) && elevatedPermissions) {
         listParameters();
-    } else if (commandStr.substring(0,2).equalsIgnoreCase(chngParamCmdStr) && elevatedPermissions) {
+    } else if (commandStr.substring(0,2).equalsIgnoreCase(chngParamCmdStr) && elevatedPermissions && !outputEnable) {
         changeParameters();
     } else {
-
+        invalidCommand();
     }
 }
 
@@ -402,7 +406,48 @@ void checkAndUpdateUint8(String *value, uint8_t *uVal) {
     }
 }
 
+void saveParameters() {
+    // See the note at the start of the find and adjust parameter function
+    // #YouGetWhatYouPayFor
+    // #AndThisOnesFree
+    EEPROM.put(outEnAddr, outputEnable);
+    EEPROM.put(revRightAddr, reverseRight);
+    EEPROM.put(revLeftAddr, reverseLeft);
+    EEPROM.put(dzEnAddr, deadZoneEnable);
+    EEPROM.put(veloDZAddr, veloDeadZone);
+    EEPROM.put(diffDZAddr, diffDeadZone);
+    EEPROM.put(maxDiffAddr, maxDifference);
+    EEPROM.put(maxPWMAddr, maxPWM);
+    EEPROM.put(minPWMAddr, minPWM);
+    EEPROM.put(CH1_MAXAddr, CH1_MAX);
+    EEPROM.put(CH1_MINAddr, CH1_MIN);
+    EEPROM.put(CH2_MAXAddr, CH2_MAX);
+    EEPROM.put(CH2_MINAddr, CH2_MIN);
+    EEPROM.put(CH3_MAXAddr, CH3_MAX);
+    EEPROM.put(CH3_MINAddr, CH3_MIN);
+    EEPROM.put(CH8_MINAddr, CH8_MAX);
+    EEPROM.put(CH8_MAXAddr, CH8_MIN);
+}
 
-void intInCheck(String *value) {
-
+void reloadParameters() {
+    // See the note at the start of the find and adjust parameter function
+    // #YouGetWhatYouPayFor
+    // #AndThisOnesFree
+    EEPROM.get(outEnAddr, outputEnable);
+    EEPROM.get(revRightAddr, reverseRight);
+    EEPROM.get(revLeftAddr, reverseLeft);
+    EEPROM.get(dzEnAddr, deadZoneEnable);
+    EEPROM.get(veloDZAddr, veloDeadZone);
+    EEPROM.get(diffDZAddr, diffDeadZone);
+    EEPROM.get(maxDiffAddr, maxDifference);
+    EEPROM.get(maxPWMAddr, maxPWM);
+    EEPROM.get(minPWMAddr, minPWM);
+    EEPROM.get(CH1_MAXAddr, CH1_MAX);
+    EEPROM.get(CH1_MINAddr, CH1_MIN);
+    EEPROM.get(CH2_MAXAddr, CH2_MAX);
+    EEPROM.get(CH2_MINAddr, CH2_MIN);
+    EEPROM.get(CH3_MAXAddr, CH3_MAX);
+    EEPROM.get(CH3_MINAddr, CH3_MIN);
+    EEPROM.get(CH8_MINAddr, CH8_MAX);
+    EEPROM.get(CH8_MAXAddr, CH8_MIN);
 }
