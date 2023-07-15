@@ -8,28 +8,30 @@ const uint8_t  RC_CH1          = A0;
 const uint8_t  RC_CH2          = A1;
 const uint8_t  RC_CH3          = A2;
 const uint8_t  RC_CH8          = A3; // the knob, to be used for either turn specific sensitivity or absolute maximum lockout
-
+#define CONTROL_TYPE 1
 
 //working variables
-uint16_t CH1_last_value = 0;
-uint16_t CH2_last_value = 0;
-uint16_t CH3_last_value = 0;
-uint16_t CH8_last_value = 0;
-uint32_t timeout = 100;
-uint32_t lastTime = 0;
-int16_t velocity = 0;
-int16_t difference = 0;
-int16_t maxSpeed = 0;
-int16_t leftMotorSpeed = 0;
-int16_t rightMotorSpeed = 0;
-uint8_t maxLeftPWM = 180;
-uint8_t minLeftPWM = 0;
-uint8_t maxRightPWM = 180;
-uint8_t minRightPWM = 0;
-boolean serialDebugPrintEnable = false;
-boolean newCommand = false;
-boolean elevatedPermissions = false;
-String commandStr = "";
+uint16_t CH1_last_value         = 0;
+uint16_t CH2_last_value         = 0;
+uint16_t CH3_last_value         = 0;
+uint16_t CH8_last_value         = 0;
+uint32_t timeout                = 100;
+uint32_t lastTime               = 0;
+int16_t  velocity               = 0;
+int16_t  difference             = 0;
+int16_t  maxSpeed               = 0;
+int16_t  leftMotorSpeed         = 0;
+int16_t  rightMotorSpeed        = 0;
+uint8_t  maxLeftPWM             = 180;
+uint8_t  minLeftPWM             = 0;
+uint8_t  maxRightPWM            = 180;
+uint8_t  minRightPWM            = 0;
+boolean  serialDebugPrintEnable = false;
+boolean  newCommand             = false;
+boolean  elevatedPermissions    = false;
+boolean  claibrateFlag          = false;
+String   commandStr             = "";
+boolean  outputInhibit          = false;
 
 
 
@@ -77,31 +79,47 @@ void setup() {
     }
 }
 
+void getSmoothReceiver() {
+    int32_t ch1Average = 0;
+    int32_t ch2Average = 0;
+    int32_t ch3Average = 0;
+    int32_t ch8Average = 0;
+    for (uint8_t i = 0; i < 3; i++) {
+        getReceiver();
+        ch1Average += CH1_last_value;
+        ch2Average += CH2_last_value;
+        ch3Average += CH3_last_value;
+        ch8Average += CH8_last_value;
+    }
+    CH1_last_value = ch1Average / 3.0;
+    CH2_last_value = ch2Average / 3.0;
+    CH3_last_value = ch3Average / 3.0;
+    CH8_last_value = ch8Average / 3.0;
+}
+
+void RITCONTROL() {
+    // original RIT MDRC Control loop
+    getSmoothReceiver();
+    scaleNumbers();
+    controlMotor();
+}
 
 void loop() {
-  if (newCommand) {
-    handleCommand(); // do this first, because if anything changed we want to implement it immediately.
-  }
-  int32_t ch1Average = 0;
-  int32_t ch2Average = 0;
-  int32_t ch3Average = 0;
-  int32_t ch8Average = 0;
-  for (uint8_t i = 0; i < 3; i++) {
-    getReceiver();
-    ch1Average += CH1_last_value;
-    ch2Average += CH2_last_value;
-    ch3Average += CH3_last_value;
-    ch8Average += CH8_last_value;
-  }
-  CH1_last_value = ch1Average / 3.0;
-  CH2_last_value = ch2Average / 3.0;
-  CH3_last_value = ch3Average / 3.0;
-  CH8_last_value = ch8Average / 3.0;
-  scaleNumbers();
-  controlMotor();
-  if (serialDebugPrintEnable) {
-    serialDebugPrint();
-  }
+    if (newCommand) {
+        handleCommand(); // do this first, because if anything changed we want to implement it immediately.
+    }
+    // do this up here because we likely will not be using it for long
+    // remove it when we no lionger need it
+    if (CONTROL_TYPE == 1 && outputEnable) {
+        RITCONTROL();
+    } else if (claibrateFlag && !outputEnable) {
+        // REALLY only do this if output disabled, for obvious reasons
+        handleCalibration();
+    }
+
+    if (serialDebugPrintEnable) {
+        serialDebugPrint();
+    }
 }
 
 
@@ -175,7 +193,7 @@ void controlMotor() {
 void handleCommand() {
     if (commandStr.length() < 1) {
         invalidCommand();
-    } else if (commandStr.equalsIgnoreCase(enableCmdStr)) {
+    } else if (commandStr.equalsIgnoreCase(enableCmdStr) && !claibrateFlag) {
         outputEnable = true;
     } else if (commandStr.equalsIgnoreCase(disableCmdStr)) {
         outputEnable = false;
@@ -184,14 +202,23 @@ void handleCommand() {
     } else if (commandStr.equalsIgnoreCase(lstParamCmdStr)) {
         printParameters();
     } else if (commandStr.equalsIgnoreCase(debugCmdStr)) {
-        serialDebugPrintEnable = true;
+        serialDebugPrintEnable = !serialDebugPrintEnable;
+    } else if (commandStr.equalsIgnoreCase(calibrCmdStr) && elevatedPermissions) {
+        if (!claibrateFlag) {
+            claibrateFlag = true;
+        } else {
+            invalidCommand();
+        }
+    } else if (commandStr.equalsIgnoreCase(quitStr) && claibrateFlag) {
+        claibrateFlag = false;
     } else if (commandStr.equalsIgnoreCase(lstChngParamCmdStr) && elevatedPermissions) {
         listParameters();
     } else if (commandStr.substring(0,2).equalsIgnoreCase(chngParamCmdStr) && elevatedPermissions) {
         changeParameters();
     } else {
-
+        invalidCommand();
     }
+    commandStr = "";
 }
 
 void invalidCommand() {
@@ -405,4 +432,21 @@ void checkAndUpdateUint8(String *value, uint8_t *uVal) {
 
 void intInCheck(String *value) {
 
+}
+
+void checkMinMax(uint16_t *min, uint16_t *max, uint16_t val) {
+    if (val < *min) {
+  	    *min = val; 
+    }
+   if (val > *max) {
+        *max = val; 
+    }
+}
+
+void handleCalibration() {
+    getReceiver();
+    checkMinMax(&CH1_MIN, &CH1_MAX, CH1_last_value);
+    checkMinMax(&CH2_MIN, &CH2_MAX, CH2_last_value);
+    checkMinMax(&CH3_MIN, &CH3_MAX, CH3_last_value);
+    checkMinMax(&CH8_MIN, &CH8_MAX, CH8_last_value);
 }
