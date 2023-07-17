@@ -8,7 +8,10 @@ const uint8_t  RC_CH1          = A0;
 const uint8_t  RC_CH2          = A1;
 const uint8_t  RC_CH3          = A2;
 const uint8_t  RC_CH8          = A3; // the knob, to be used for either turn specific sensitivity or absolute maximum lockout
-#define CONTROL_TYPE 1
+#define RIT_CONTROL 1
+#define LINEAR_CONTROL 2
+
+#define CONTROL_TYPE RIT_CONTROL
 
 //working variables
 uint16_t CH1_last_value         = 0;
@@ -18,6 +21,7 @@ uint16_t CH8_last_value         = 0;
 uint32_t timeout                = 100;
 uint32_t lastTime               = 0;
 int16_t  velocity               = 0;
+int16_t  persistentVelo         = 0; // for linear and exponential control
 int16_t  difference             = 0;
 int16_t  maxSpeed               = 0;
 int16_t  leftMotorSpeed         = 0;
@@ -31,7 +35,6 @@ boolean  newCommand             = false;
 boolean  elevatedPermissions    = false;
 boolean  claibrateFlag          = false;
 String   commandStr             = "";
-boolean  outputInhibit          = false;
 
 
 
@@ -53,6 +56,8 @@ uint16_t CH3_MAX         = 1800; // left stick up/down LIMITTER
 uint16_t CH3_MIN         = 1100;
 uint16_t CH8_MIN         = 989; // secondary limiter
 uint16_t CH8_MAX         = 1984;
+uint8_t  maxPosDeltaV    = 10; // max per control loop cycle
+uint8_t  maxNegDeltaV    = 5;
 
 
 
@@ -104,17 +109,34 @@ void RITCONTROL() {
     controlMotor();
 }
 
+void LINEARCONTROL() {
+    getSmoothReceiver();
+    scaleNumbers();
+    int16_t veloOut;
+    if (velocity >= persistentVelo + maxPosDeltaV) {
+        veloOut = persistentVelo + maxPosDeltaV;
+        persistentVelo = veloOut;
+    } else if (velocity > persistentVelo) {
+        veloOut = velocity;
+        persistentVelo = veloOut;
+    } else if (velocity <= persistentVelo - maxNegDeltaV) {
+        veloOut
+    }
+}
+
 void loop() {
     if (newCommand) {
         handleCommand(); // do this first, because if anything changed we want to implement it immediately.
     }
     // do this up here because we likely will not be using it for long
     // remove it when we no lionger need it
-    if (CONTROL_TYPE == 1 && outputEnable) {
+    if (CONTROL_TYPE == RIT_CONTROL && outputEnable) {
         RITCONTROL();
     } else if (claibrateFlag && !outputEnable) {
         // REALLY only do this if output disabled, for obvious reasons
         handleCalibration();
+    } else if (CONTROL_TYPE == LINEAR_CONTROL && outputEnable) {
+        LINEARCONTROL();
     }
 
     if (serialDebugPrintEnable) {
