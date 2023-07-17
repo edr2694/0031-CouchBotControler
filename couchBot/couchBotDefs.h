@@ -50,6 +50,8 @@ const String lstChngParamCmdStr = "lcp";
 const String chngParamCmdStr = "cp";
 const String saveCmdStr = "save";
 const String reloadCmdStr = "reload";
+const String calibrCmdStr = "calibrate";
+const String quitStr     = "quit"; //for any and all long running functions
 
 // Miscellaneous
 
