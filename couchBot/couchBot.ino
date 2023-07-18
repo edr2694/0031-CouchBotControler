@@ -58,6 +58,7 @@ uint16_t CH8_MIN         = 989; // secondary limiter
 uint16_t CH8_MAX         = 1984;
 uint8_t  maxPosDeltaV    = 10; // max per control loop cycle
 uint8_t  maxNegDeltaV    = 5;
+uint16_t delayTimeMillis = 5;
 
 
 
@@ -113,15 +114,32 @@ void LINEARCONTROL() {
     getSmoothReceiver();
     scaleNumbers();
     int16_t veloOut;
-    if (velocity >= persistentVelo + maxPosDeltaV) {
-        veloOut = persistentVelo + maxPosDeltaV;
-        persistentVelo = veloOut;
-    } else if (velocity > persistentVelo) {
-        veloOut = velocity;
-        persistentVelo = veloOut;
-    } else if (velocity <= persistentVelo - maxNegDeltaV) {
-        veloOut
+    if (velocity > persistentVelo) {
+        if (persistentVelo - velocity >= maxPosDeltaV) {
+            veloOut += maxPosDeltaV;
+        } else {
+            veloOut = velocity;
+        }
+        // now check for an overrun
+        if (veloOut > 99) {
+            veloOut = 99;
+        }
+    } else if (velocity < persistentVelo) {
+        if (velocity - persistentVelo < maxNegDeltaV) {
+            veloOut -= maxNegDeltaV;
+        } else {
+            veloOut = velocity;
+        }
+        // now check for an underrun
+        if (veloOut < 0) {
+            veloOut = 0;
+        }
+    } else {
+        veloOut = persistentVelo;
     }
+    velocity = veloOut;
+    persistentVelo = velocity;
+    controlMotor();
 }
 
 void loop() {
@@ -142,6 +160,8 @@ void loop() {
     if (serialDebugPrintEnable) {
         serialDebugPrint();
     }
+
+    delay((unsigned long)delayTimeMillis);
 }
 
 
@@ -213,8 +233,10 @@ void controlMotor() {
 }
 
 void handleCommand() {
+    commandStr.remove(commandStr.indexOf("\n"));
     if (commandStr.length() < 1) {
         invalidCommand();
+        Serial.println("Command less than 1");
     } else if (commandStr.equalsIgnoreCase(enableCmdStr) && !claibrateFlag) {
         outputEnable = true;
     } else if (commandStr.equalsIgnoreCase(disableCmdStr)) {
@@ -230,6 +252,7 @@ void handleCommand() {
             claibrateFlag = true;
         } else {
             invalidCommand();
+            Serial.println("bad calibrate");
         }
     } else if (commandStr.equalsIgnoreCase(quitStr) && claibrateFlag) {
         claibrateFlag = false;
@@ -243,9 +266,10 @@ void handleCommand() {
         changeParameters();
     } else {
         invalidCommand();
-        invalidCommand();
+        Serial.print("Bad command, len: ");Serial.print(commandStr.length());Serial.print(",");Serial.println(commandStr);
     }
     commandStr = "";
+    newCommand = false;
 }
 
 void invalidCommand() {
@@ -405,6 +429,8 @@ void findAndAdjustParam(String *param, String *value)
         checkAndUpdateUint16(value, &CH8_MAX);
     } else if (param->equalsIgnoreCase(ch8minStr)) {
         checkAndUpdateUint16(value, &CH8_MIN);
+    } else if (param->equalsIgnoreCase(delayTmStr)) {
+        checkAndUpdateUint16(value, &delayTimeMillis);
     } else {
         Serial.println(invalidPrmString);
     }
@@ -477,6 +503,7 @@ void saveParameters() {
     EEPROM.put(CH3_MINAddr, CH3_MIN);
     EEPROM.put(CH8_MINAddr, CH8_MAX);
     EEPROM.put(CH8_MAXAddr, CH8_MIN);
+    EEPROM.put(delayMilsAddr, delayTimeMillis);
 }
 
 void reloadParameters() {
@@ -500,6 +527,7 @@ void reloadParameters() {
     EEPROM.get(CH3_MINAddr, CH3_MIN);
     EEPROM.get(CH8_MINAddr, CH8_MAX);
     EEPROM.get(CH8_MAXAddr, CH8_MIN);
+    EEPROM.get(delayMilsAddr, delayTimeMillis);
 }
 
 void checkMinMax(uint16_t *min, uint16_t *max, uint16_t val) {
