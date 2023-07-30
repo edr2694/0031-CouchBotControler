@@ -20,6 +20,7 @@ const int CH3_MINAddr   = 22; // uint16_t
 const int CH8_MINAddr   = 24; // uint16_t
 const int CH8_MAXAddr   = 26; // uint16_t
 const int delayMilsAddr = 28; // uint16_t
+const int useKnobAddr   = 30; // boolean
 
 // Parameters
 const String outEnStr    = "outputEnable";
@@ -40,6 +41,7 @@ const String ch3minStr   = "ch3min";
 const String ch8maxStr   = "ch8max";
 const String ch8minStr   = "ch8min";
 const String delayTmStr  = "delayMillis";
+const String useKnobStr  = "maxVeloKnobEnable"; 
 
 // Commands
 

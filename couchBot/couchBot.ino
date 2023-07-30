@@ -8,6 +8,7 @@ const uint8_t  RC_CH1          = A0;
 const uint8_t  RC_CH2          = A1;
 const uint8_t  RC_CH3          = A2;
 const uint8_t  RC_CH8          = A3; // the knob, to be used for either turn specific sensitivity or absolute maximum lockout
+const uint8_t  ELEV_PERMS_PIN  = 7;
 #define RIT_CONTROL 1
 #define LINEAR_CONTROL 2
 
@@ -24,6 +25,7 @@ int16_t  velocity               = 0;
 int16_t  persistentVelo         = 0; // for linear and exponential control
 int16_t  difference             = 0;
 int16_t  maxSpeed               = 0;
+int16_t  hardCapSpeed           = 0; // knob controlled hard maximum
 int16_t  leftMotorSpeed         = 0;
 int16_t  rightMotorSpeed        = 0;
 uint8_t  maxLeftPWM             = 180;
@@ -32,7 +34,6 @@ uint8_t  maxRightPWM            = 180;
 uint8_t  minRightPWM            = 0;
 boolean  serialDebugPrintEnable = false;
 boolean  newCommand             = false;
-boolean  elevatedPermissions    = false;
 boolean  claibrateFlag          = false;
 String   commandStr             = "";
 
@@ -43,6 +44,7 @@ boolean  outputEnable    = false;
 boolean  reverseRight    = true;
 boolean  reverseLeft     = false;
 boolean  deadZoneEnable  = true;
+boolean  capMaxVelo      = true;
 uint16_t veloDeadZone    = 6;
 uint16_t diffDeadZone    = 6;
 uint16_t maxDifference   = 20;
@@ -114,28 +116,37 @@ void LINEARCONTROL() {
     getSmoothReceiver();
     scaleNumbers();
     int16_t veloOut;
-    if (velocity > persistentVelo) {
-        if (persistentVelo - velocity >= maxPosDeltaV) {
-            veloOut += maxPosDeltaV;
-        } else {
-            veloOut = velocity;
-        }
-        // now check for an overrun
-        if (veloOut > 99) {
-            veloOut = 99;
-        }
-    } else if (velocity < persistentVelo) {
-        if (velocity - persistentVelo < maxNegDeltaV) {
-            veloOut -= maxNegDeltaV;
-        } else {
-            veloOut = velocity;
-        }
-        // now check for an underrun
-        if (veloOut < 0) {
-            veloOut = 0;
-        }
+    if (!outputEnable) {
+        // do not turn the motors if output disabled
+        veloOut = 0;
+        difference = 0;
     } else {
-        veloOut = persistentVelo;
+        if (capMaxVelo && (velocity > hardCapSpeed)) {
+            velocity = hardCapSpeed;
+        }
+        if (velocity > persistentVelo) {
+            if (persistentVelo - velocity >= maxPosDeltaV) {
+                veloOut += maxPosDeltaV;
+            } else {
+                veloOut = velocity;
+            }
+            // now check for an overrun
+            if (veloOut > 99) {
+                veloOut = 99;
+            }
+        } else if (velocity < persistentVelo) {
+            if (velocity - persistentVelo < maxNegDeltaV) {
+                veloOut -= maxNegDeltaV;
+            } else {
+                veloOut = velocity;
+            }
+            // now check for an underrun
+            if (veloOut < 0) {
+                veloOut = 0;
+            }
+        } else {
+            veloOut = persistentVelo;
+        }
     }
     velocity = veloOut;
     persistentVelo = velocity;
@@ -148,19 +159,18 @@ void loop() {
     }
     // do this up here because we likely will not be using it for long
     // remove it when we no lionger need it
-    if (CONTROL_TYPE == RIT_CONTROL && outputEnable) {
+    if (CONTROL_TYPE == RIT_CONTROL) {
         RITCONTROL();
     } else if (claibrateFlag && !outputEnable) {
         // REALLY only do this if output disabled, for obvious reasons
         handleCalibration();
-    } else if (CONTROL_TYPE == LINEAR_CONTROL && outputEnable) {
+    } else if (CONTROL_TYPE == LINEAR_CONTROL) {
         LINEARCONTROL();
     }
 
     if (serialDebugPrintEnable) {
         serialDebugPrint();
     }
-
     delay((unsigned long)delayTimeMillis);
 }
 
@@ -191,8 +201,6 @@ void getReceiver() {
 
 
 void scaleNumbers() {
-
-
 // set current speed value
   if (CH2_last_value > CH2_MAX) velocity = CH2_MAX;
   else if (CH2_last_value < CH2_MIN) velocity = CH2_MIN;
@@ -205,11 +213,17 @@ void scaleNumbers() {
   else maxSpeed = CH3_last_value;
   maxSpeed = map(maxSpeed, CH3_MIN, CH3_MAX, 1, 99);
 
+// set maximum hard cap speed value
+  if (CH8_last_value > CH8_MAX) hardCapSpeed = CH8_MAX;
+  else if (CH8_last_value < CH8_MIN) hardCapSpeed = CH8_MIN;
+  else hardCapSpeed = CH3_last_value;
+  hardCapSpeed = map(hardCapSpeed, CH8_MIN, CH8_MAX, 1, 99);
+
 // set current turn value
   if (CH1_last_value > CH1_MAX) difference = CH1_MAX;
   else if (CH1_last_value < CH1_MIN) difference = CH1_MIN;
   else difference = CH1_last_value;
-  difference = map(difference, CH1_MIN, CH1_MAX, (-1*maxDifference), maxDifference);
+  difference = map(difference, CH1_MIN, CH1_MAX, (-1.0*maxDifference), maxDifference);
 
   // set everything to 0 if transmitter is off
   if (CH1_last_value == 0) difference = 0;  //CH1 returns 0 if radio is off
@@ -246,8 +260,8 @@ void handleCommand() {
     } else if (commandStr.equalsIgnoreCase(lstParamCmdStr)) {
         printParameters();
     } else if (commandStr.equalsIgnoreCase(debugCmdStr)) {
-        serialDebugPrintEnable = !serialDebugPrintEnable;
-    } else if (commandStr.equalsIgnoreCase(calibrCmdStr) && elevatedPermissions) {
+        serialDebugPrintEnable = true;
+    } else if (commandStr.equalsIgnoreCase(calibrCmdStr)) {
         if (!claibrateFlag) {
             claibrateFlag = true;
         } else {
@@ -256,13 +270,15 @@ void handleCommand() {
         }
     } else if (commandStr.equalsIgnoreCase(quitStr) && claibrateFlag) {
         claibrateFlag = false;
-    } else if (commandStr.equalsIgnoreCase(saveCmdStr) && elevatedPermissions && !outputEnable) {
+    } else if (commandStr.equalsIgnoreCase(quitStr) && serialDebugPrintEnable) {
+        serialDebugPrintEnable = false;
+    } else if (commandStr.equalsIgnoreCase(saveCmdStr)&& !outputEnable) {
         saveParameters();
-    } else if (commandStr.equalsIgnoreCase(reloadCmdStr) && elevatedPermissions && !outputEnable) {
+    } else if (commandStr.equalsIgnoreCase(reloadCmdStr) && !outputEnable) {
         reloadParameters();
-    } else if (commandStr.equalsIgnoreCase(lstChngParamCmdStr) && elevatedPermissions) {
+    } else if (commandStr.equalsIgnoreCase(lstChngParamCmdStr)) {
         listParameters();
-    } else if (commandStr.substring(0,2).equalsIgnoreCase(chngParamCmdStr) && elevatedPermissions && !outputEnable) {
+    } else if (commandStr.substring(0,2).equalsIgnoreCase(chngParamCmdStr) && !outputEnable) {
         changeParameters();
     } else {
         invalidCommand();
@@ -277,15 +293,15 @@ void invalidCommand() {
 }
 
 void serialDebugPrint() {
-  Serial.print("CH1: "); Serial.print(CH1_last_value);
-  Serial.print("  CH2: "); Serial.print(CH2_last_value);
-  Serial.print("  CH3: "); Serial.print(CH3_last_value);
-  Serial.print("  CH8: "); Serial.print(CH8_last_value);
-  Serial.print("  Velocity: "); Serial.print(velocity);
-  Serial.print("  Diff: "); Serial.print(difference);
-  Serial.print("  Max Speed: "); Serial.print(maxSpeed);
-  Serial.print("  L: "); Serial.print(leftMotorSpeed);
-  Serial.print("  R: "); Serial.println(rightMotorSpeed);
+  Serial.print("1:"); Serial.print(CH1_last_value);
+  Serial.print(",2:"); Serial.print(CH2_last_value);
+  Serial.print(",3:"); Serial.print(CH3_last_value);
+  Serial.print(",8:"); Serial.print(CH8_last_value);
+  Serial.print(",V:"); Serial.print(velocity);
+  Serial.print(",D:"); Serial.print(difference);
+  Serial.print(",M:"); Serial.print(maxSpeed);
+  Serial.print(",L:"); Serial.print(leftMotorSpeed);
+  Serial.print(",R:"); Serial.println(rightMotorSpeed);
 }
 
 void serialEvent() {
@@ -293,7 +309,7 @@ void serialEvent() {
     char inChar = (char)Serial.read();
     commandStr += inChar;
     if (inChar == '\n') {
-      newCommand = true;
+        newCommand = true;
     }
   }
 }
@@ -306,13 +322,11 @@ void printHelp() {
     Serial.print(debugCmdStr);Serial.println(": print debug values (q to quit)");
     Serial.print(enableCmdStr);Serial.println(": enable motor output");
     Serial.print(disableCmdStr);Serial.println(": disable motor output");
-    if (elevatedPermissions) {
-        Serial.println("You have elevated permissions! You have extra access:");
-        Serial.print(lstChngParamCmdStr);Serial.println(": list changeable parameters");
-        Serial.print(chngParamCmdStr);Serial.println(" <parameter> <value>: change a parameter value. Motors must be disabled");
-        Serial.print(saveCmdStr);Serial.println(": save parameters to eeprom. Will overwrite any values stored there, and cannot be undone");
-        Serial.print(reloadCmdStr);Serial.println(": reload parameters from eeprom");
-    }
+    Serial.print(lstChngParamCmdStr);Serial.println(": list changeable parameters");
+    Serial.print(chngParamCmdStr);Serial.println(" <parameter> <value>: change a parameter value. Motors must be disabled");
+    Serial.print(saveCmdStr);Serial.println(": save parameters to eeprom. Will overwrite any values stored there, and cannot be undone");
+    Serial.print(reloadCmdStr);Serial.println(": reload parameters from eeprom");
+
 }
 
 void printParameters() {
@@ -431,6 +445,8 @@ void findAndAdjustParam(String *param, String *value)
         checkAndUpdateUint16(value, &CH8_MIN);
     } else if (param->equalsIgnoreCase(delayTmStr)) {
         checkAndUpdateUint16(value, &delayTimeMillis);
+    } else if (param->equalsIgnoreCase(useKnobStr)) {
+        checkAndUpdateBoolean(value, &capMaxVelo);
     } else {
         Serial.println(invalidPrmString);
     }
